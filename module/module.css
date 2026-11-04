@@ -1,11 +1,13 @@
 /* 工作台卡片（module 形态）：同一份 HTML，按 data-xhub-variant 切两套排版
  *
- * 设计约束（踩过的坑）：
- *  - 不依赖宿主是否注入 --xhub-surface：卡片自己铺一层半透明底，
- *    深/浅主题各一套确定的 rgba，避免“宿主垫浅色 → 白底白字”。
- *  - 不用 color-mix / backdrop-filter / container-type：宿主 WebView 版本参差，
- *    任一不支持的声明会让整条 background 失效，卡片直接变空白。
- *  - 矮格子的降级用 @media (max-height)：iframe 视口高度就是格子高度，可靠。
+ * 配色策略（踩过两次坑）：
+ *  1) 表面优先用宿主的卡片色 --xhub-bg-card，跟其他卡片保持一致；
+ *     宿主没给时退回自绘的深/浅两组 rgba。
+ *  2) 文字不再按 data-xhub-theme 猜，而是由 JS 量出**实际画出来的底色**
+ *     并打上 data-surface="light|dark"，彻底避开“主题浅色但卡片深色”的错配。
+ *  3) 不用 color-mix / backdrop-filter / container-type：宿主 WebView 版本参差，
+ *     任一不支持的声明会让整条 background 失效（卡片变空白）。
+ *  4) 矮格子降级用 @media (max-height)：iframe 视口高度就是格子高度。
  */
 
 html, body {
@@ -23,22 +25,38 @@ body { font-size: 12px; }
   flex-direction: column;
   gap: 8px;
   border-radius: 12px;
-  /* 深色为默认（宿主多为深色），浅色主题覆盖 */
-  background: rgba(24, 26, 33, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  color: #eceef4;
+  background: var(--xhub-bg-card, rgba(24, 26, 33, 0.72));
+  border: 1px solid var(--xhub-border, rgba(255, 255, 255, 0.10));
+  color: var(--xhub-text-1, #eceef4);
   cursor: pointer;
   overflow: hidden;
 }
 
-:root[data-xhub-theme='light'] .card {
-  background: rgba(255, 255, 255, 0.74);
-  border-color: rgba(18, 22, 33, 0.10);
+/* 按实际卡面反色：文字与状态色一起切换，避免“深卡 + 浅色主题的暗灰标签” */
+.card[data-surface='dark'] {
+  color: #eceef4;
+  --tc-text-1: #eceef4;
+  --tc-text-2: #b9bfcd;
+  --tc-text-3: #8f96a5;
+  --tc-red: #ff6b6f;
+  --tc-orange: #ff8a3d;
+  --tc-amber: #f5c542;
+  --tc-blue: #7aa2ff;
+}
+
+.card[data-surface='light'] {
   color: #15171c;
+  --tc-text-1: #15171c;
+  --tc-text-2: #4a5060;
+  --tc-text-3: #6b7280;
+  --tc-red: #c62b30;
+  --tc-orange: #c2570a;
+  --tc-amber: #8a5f00;
+  --tc-blue: #2f56c9;
 }
 
 .card:focus-visible {
-  outline: 2px solid var(--tc-accent, #5b6cff);
+  outline: 2px solid var(--xhub-accent, #5b6cff);
   outline-offset: -2px;
 }
 
@@ -71,23 +89,22 @@ body { font-size: 12px; }
   font-weight: 700;
   letter-spacing: -1px;
   font-variant-numeric: tabular-nums;
-  color: #eceef4;
 }
 
-.compact .n.red { color: #ff6b6f; }
-.compact .n.orange { color: #ff8a3d; }
-.compact .n.amber { color: #f5c542; }
-.compact .n.dim { color: #a3a9b8; }
+.compact .n.red { color: var(--tc-red, #e5484d); }
+.compact .n.orange { color: var(--tc-orange, #f76b15); }
+.compact .n.amber { color: var(--tc-amber, #f5c542); }
+.compact .n.dim { color: var(--tc-text-2, #a3a9b8); }
 
 .compact .lbl {
   font-size: 11.5px;
-  color: #b9bfcd;
+  color: var(--tc-text-2, #b9bfcd);
   white-space: nowrap;
 }
 
 .compact .sub {
   font-size: 11px;
-  color: #a9b0be;
+  color: var(--tc-text-2, #a9b0be);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -95,26 +112,16 @@ body { font-size: 12px; }
 
 .compact .sub b {
   font-weight: 600;
-  color: #e6e9f0;
+  color: var(--tc-text-1, #e6e9f0);
 }
 
 .compact .foot {
   font-size: 10.5px;
-  color: #8f96a5;
+  color: var(--tc-text-3, #8f96a5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-:root[data-xhub-theme='light'] .compact .n { color: #15171c; }
-:root[data-xhub-theme='light'] .compact .n.red { color: #d13438; }
-:root[data-xhub-theme='light'] .compact .n.orange { color: #d9600f; }
-:root[data-xhub-theme='light'] .compact .n.amber { color: #9a6a00; }
-:root[data-xhub-theme='light'] .compact .n.dim { color: #5a6070; }
-:root[data-xhub-theme='light'] .compact .lbl { color: #4a5060; }
-:root[data-xhub-theme='light'] .compact .sub { color: #5a6070; }
-:root[data-xhub-theme='light'] .compact .sub b { color: #15171c; }
-:root[data-xhub-theme='light'] .compact .foot { color: #6b7280; }
 
 /* 矮格子：先收脚注，再收副信息，主数字保底 */
 @media (max-height: 124px) {
@@ -158,12 +165,11 @@ body { font-size: 12px; }
 
 .head .more {
   font-size: 11px;
-  color: #a9b0be;
+  color: var(--tc-text-2, #a9b0be);
   white-space: nowrap;
 }
 
-:root[data-xhub-theme='light'] .head .more { color: #5a6070; }
-
+/* 中性半透明磁贴：深浅卡面通用，不猜主题 */
 .tiles {
   display: flex;
   gap: 6px;
@@ -175,13 +181,8 @@ body { font-size: 12px; }
   min-width: 0;
   padding: 6px 8px;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-}
-
-:root[data-xhub-theme='light'] .tile {
-  background: rgba(18, 22, 33, 0.03);
-  border-color: rgba(18, 22, 33, 0.08);
+  background: rgba(127, 127, 127, 0.10);
+  border: 1px solid rgba(127, 127, 127, 0.16);
 }
 
 .tile .n {
@@ -197,11 +198,9 @@ body { font-size: 12px; }
   display: block;
   font-size: 10.5px;
   font-weight: 500;
-  color: #a9b0be;
+  color: var(--tc-text-2, #a9b0be);
   white-space: nowrap;
 }
-
-:root[data-xhub-theme='light'] .tile .l { color: #4a5060; }
 
 .list {
   display: flex;
@@ -216,11 +215,9 @@ body { font-size: 12px; }
   align-items: center;
   gap: 8px;
   padding: 3px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(127, 127, 127, 0.14);
   min-width: 0;
 }
-
-:root[data-xhub-theme='light'] .item { border-bottom-color: rgba(18, 22, 33, 0.06); }
 
 .item:last-child { border-bottom: 0; }
 
@@ -255,14 +252,31 @@ body { font-size: 12px; }
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   flex: 1;
   min-height: 0;
-  color: #8f96a5;
+  color: var(--tc-text-3, #8f96a5);
   font-size: 11.5px;
   text-align: center;
 }
 
-:root[data-xhub-theme='light'] .empty { color: #6b7280; }
+.empty.error {
+  flex-direction: column;
+  color: var(--tc-red, #e5484d);
+}
+
+.retry {
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(127, 127, 127, 0.28);
+  background: rgba(127, 127, 127, 0.12);
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.retry:hover { background: rgba(127, 127, 127, 0.20); }
 
 /* 标准形态放矮时，先牺牲列表 */
 @media (max-height: 132px) {

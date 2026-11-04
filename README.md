@@ -50,10 +50,17 @@ module/index.html?mock=1&theme=dark&xhub-variant=compact
 
 `file://` 下自动启用模拟数据；真宿主里宿主已注入 `window.xhub`，mock 不会生效。
 
+## 数据接入
+
+卡片数据来自宿主接口 `xhub.data.todos.list()`，经 `module/data.js` 归一后进入计算层：
+单位/类型/缺字段/包装格式都有兼容，加载、空、错误三态齐全，错误可重试。
+字段映射与后端差异清单见 [数据接入说明](docs/数据适配.md)。
+
 ## 测试
 
 ```bash
-node tests/countdown.test.mjs
+node tests/countdown.test.mjs   # 日期与状态：95 项
+node tests/adapter.test.mjs     # 字段归一与容错：46 项
 ```
 
 95 条断言，覆盖今天 / 明天 / 逾期 / 跨年 / 闰年 / 夏令时 / 日界线 / 脏数据 / 子待办折叠 / 排序 / 统计 / 提醒去重 / 跨天定时器。
@@ -73,11 +80,13 @@ icon.svg                 图标（自带配色，遵循宿主 <img> 渲染约定
 shared/countdown.js      纯逻辑：日差、状态、排序、分组、统计、提醒挑选（无 DOM）
 shared/theme.css         --xhub-* 主题令牌 + 深浅兜底
 shared/mock-bridge.js    预览用模拟宿主（仅 file:// 或 ?mock=1 生效）
+module/data.js           数据适配层：取数、超时、错误归一、字段归一
 view/                    主视图：分组倒计时列表
 module/                  工作台卡片：compact / standard 共用一份 HTML
 devharness/host.html     预览台
 tests/countdown.test.mjs 单元测试
 docs/待办倒计时-设计与实现.md   设计说明：数据结构、计算规则、边界、更新逻辑
+docs/数据适配.md         卡片数据契约：字段映射、后端差异、状态处理
 ```
 
 ## 配置

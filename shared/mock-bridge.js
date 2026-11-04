@@ -118,6 +118,12 @@
   }
 
   // ---- 主题 ----
+  // bg=dark|light：让卡片底色与主题**故意错开**，用来验证“按实际底色反色”的兜底
+  var bgOverride = qs.get('bg');
+  var cardBg = bgOverride === 'dark' ? 'rgba(24,26,33,.72)'
+    : bgOverride === 'light' ? 'rgba(255,255,255,.74)'
+    : (themeMode === 'dark' ? 'rgba(25,27,33,.72)' : 'rgba(255,255,255,.74)');
+
   var theme = {
     mode: themeMode,
     preset: null,
@@ -127,7 +133,7 @@
       accent: '#5b6cff', brand: '#5b6cff', brandSoft: 'rgba(91,108,255,.14)',
       bgPage: themeMode === 'dark' ? '#14161b' : '#f6f7fb',
       pageBg: themeMode === 'dark' ? '#14161b' : '#f6f7fb',
-      bgCard: themeMode === 'dark' ? '#191b21' : '#ffffff',
+      bgCard: cardBg,
       surface: themeMode === 'dark' ? '#191b21' : '#ffffff',
       text1: themeMode === 'dark' ? '#eceef4' : '#15171c',
       text2: themeMode === 'dark' ? '#a3a9b8' : '#5a6070',
@@ -199,10 +205,23 @@
 
   window.__xhubMock = { enabled: true, scene: scene, offsetDays: offsetDays };
 
+  var failMode = qs.get('fail');          // fail=1：模拟接口报错；fail=denied：模拟缺权限
+  var delayMs = parseInt(qs.get('delay') || '0', 10) || 0;
+
   window.xhub = {
     data: {
       todos: {
-        list: function () { return Promise.resolve(todos.map(function (x) { return Object.assign({}, x); })); },
+        list: function () {
+          if (failMode) {
+            var e = new Error(failMode === 'denied' ? '缺少 data:read 权限' : '模拟后端错误: list failed');
+            e.code = failMode === 'denied' ? 'PERMISSION_DENIED' : 'INTERNAL';
+            return Promise.reject(e);
+          }
+          var payload = todos.map(function (x) { return Object.assign({}, x); });
+          return new Promise(function (resolve) {
+            setTimeout(function () { resolve(payload); }, delayMs);
+          });
+        },
         get: function (opts) { return Promise.resolve(todos.find(function (x) { return x.id === opts.id; }) || null); }
       }
     },

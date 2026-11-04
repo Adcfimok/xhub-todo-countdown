@@ -2,12 +2,20 @@
   'use strict';
 
   var X = window.XCountdown;
-  var DAY = 86400000;
+  var D = window.XTodoData;
   var card = document.getElementById('card');
   var boxCompact = document.getElementById('compact');
   var boxStandard = document.getElementById('standard');
 
-  var state = { cfg: { warnDays: 3, dayStartHour: 0 }, todos: [], nowMs: Date.now(), loadedAt: 0, variant: 'standard' };
+  var state = {
+    cfg: { warnDays: 3, dayStartHour: 0 },
+    todos: [],
+    nowMs: Date.now(),
+    loadedAt: 0,
+    variant: 'standard',
+    status: 'loading',    // loading | ready | error
+    error: ''
+  };
 
   function xhub() { return window.xhub || null; }
 
@@ -17,7 +25,10 @@
       .replace(/"/g, '&quot;');
   }
 
-  /* 形态：query 首帧 → DOM 属性 → 宿主广播；三处都落到 data-xhub-variant 上，纯 CSS 才好分支 */
+  /* ------------------------------------------------------------------ */
+  /* 形态                                                               */
+  /* ------------------------------------------------------------------ */
+
   function applyVariant(v) {
     var val = (v === 'compact' || v === 'standard') ? v : 'standard';
     state.variant = val;
@@ -32,28 +43,76 @@
     return q || attr || 'standard';
   }
 
-  async function load() {
-    try {
-      var all = null;
-      try { all = await xhub().config.all(); } catch (e) {}
-      var cfg = Object.assign({ warnDays: 3, dayStartHour: 0, showCompleted: false }, all || {});
-      state.cfg = {
-        warnDays: Math.min(60, Math.max(0, parseInt(cfg.warnDays, 10) || 0)),
-        dayStartHour: Math.min(23, Math.max(0, parseInt(cfg.dayStartHour, 10) || 0)),
-        showCompleted: !!cfg.showCompleted
+  /* ------------------------------------------------------------------ */
+  /* 数据：配置 + 待办                                                   */
+  /* ------------------------------------------------------------------ */
+
+  async function readConfig() {
+    var all = null;
+    try { all = await xhub().config.all(); } catch (e) {}
+    var cfg = Object.assign({ warnDays: 3, dayStartHour: 0 }, all || {});
+    state.cfg = {
+      warnDays: Math.min(60, Math.max(0, parseInt(cfg.warnDays, 10) || 0)),
+      dayStartHour: Math.min(23, Math.max(0, parseInt(cfg.dayStartHour, 10) || 0))
+    };
+  }
+
+  /** 适配层模型 → 倒计时计算所需的宿主字段名（唯一一处字段映射） */
+  function toCalcModels(list) {
+    return list.map(function (t) {
+      return {
+        id: t.id,
+        title: t.title,
+        done: t.done,
+        priority: t.priority,
+        due_at: t.dueAt,
+        parent_id: t.parentId,
+        repeat_mode: t.repeatMode,
+        description: t.description
       };
-      var list = await xhub().data.todos.list();
-      state.todos = Array.isArray(list) ? list : [];
-      state.loadedAt = Date.now();
-    } catch (e) {
-      state.todos = [];
+    });
+  }
+
+  async function load() {
+    // 已有数据时静默刷新，避免卡片闪成骨架
+    if (!state.todos.length) {
+      state.status = 'loading';
+      render();
     }
+
+    if (!xhub()) {
+      state.status = 'error';
+      state.error = '未检测到宿主';
+      render();
+      return;
+    }
+
+    try { await readConfig(); } catch (e) {}
+
+    var res = await D.fetchTodos();
+    state.loadedAt = res.at;
     state.nowMs = Date.now();
+
+    if (res.status === 'error') {
+      state.status = 'error';
+      state.error = res.error;
+      // 保留上一次的数据，出错时不至于整卡清空（只在首屏无数据时显示错误页）
+      render();
+      return;
+    }
+
+    state.status = 'ready';
+    state.error = '';
+    state.todos = res.todos;
     render();
   }
 
+  /* ------------------------------------------------------------------ */
+  /* 计算                                                               */
+  /* ------------------------------------------------------------------ */
+
   function summary() {
-    var items = X.prepare(state.todos, state.nowMs, state.cfg);
+    var items = X.prepare(toCalcModels(state.todos), state.nowMs, state.cfg);
     return { items: items, s: X.summarize(items) };
   }
 
@@ -71,27 +130,97 @@
     return it.days + ' 天';
   }
 
+
+  /* ------------------------------------------------------------------ */
+  /* 卡面明暗：按**实际画出来的底色**决定文字反色，而不是靠主题属性猜     */
+  /* ------------------------------------------------------------------ */
+
+  function parseColor(str) {
+    if (!str) return null;
+    var s = String(str).trim();
+    if (!s || s === 'transparent') return [0, 0, 0, 0];
+    var m = s.match(/^#([0-9a-f]{3,8})$/i);
+    if (m) {
+      var h = m[1];
+      if (h.length === 3 || h.length === 4) h = h.split('').map(function (c) { return c + c; }).join('');
+      return [
+        parseInt(h.slice(0, 2), 16),
+        parseInt(h.slice(2, 4), 16),
+        parseInt(h.slice(4, 6), 16),
+        h.length >= 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1
+      ];
+    }
+    m = s.match(/^rgba?\(([^)]+)\)$/i);
+    if (m) {
+      var p = m[1].split(',').map(function (x) { return parseFloat(x); });
+      return [p[0] || 0, p[1] || 0, p[2] || 0, p.length > 3 ? p[3] : 1];
+    }
+    return null;
+  }
+
+  function luminance(rgb) {
+    var c = rgb.slice(0, 3).map(function (v) {
+      v = v / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+
+  function syncSurface() {
+    try {
+      var bg = parseColor(getComputedStyle(card).backgroundColor);
+      if (!bg) return;
+      var backdrop = parseColor(getComputedStyle(document.documentElement).getPropertyValue('--xhub-page-bg')) ||
+        [20, 22, 27, 1];
+      // 半透明卡面：与页面底色做 alpha 合成，再算亮度
+      var a = bg[3] === undefined ? 1 : bg[3];
+      var mix = [0, 1, 2].map(function (i) { return bg[i] * a + backdrop[i] * (1 - a); });
+      var light = luminance(mix) > 0.42;
+      card.setAttribute('data-surface', light ? 'light' : 'dark');
+    } catch (e) { /* 量不到就保持默认 */ }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 渲染                                                               */
+  /* ------------------------------------------------------------------ */
+
+  function retryHtml(msg) {
+    return '<div class="empty error">' +
+      '<span>读取失败：' + esc(msg) + '</span>' +
+      '<button type="button" class="retry" data-act="retry">重试</button>' +
+      '</div>';
+  }
+
+  function loadingHtml() {
+    return '<div class="empty"><span>读取中…</span></div>';
+  }
+
   function render() {
     try {
       renderUnsafe();
     } catch (err) {
-      var msg = (err && err.message) || '渲染失败';
-      boxStandard.innerHTML = '<div class="empty">加载失败：' + esc(msg) + '</div>';
+      boxStandard.innerHTML = retryHtml((err && err.message) || '渲染失败');
       boxCompact.innerHTML = '<div class="foot">加载失败</div>';
     }
   }
 
   function renderUnsafe() {
-    var r = summary();
-    var s = r.s;
-
-    if (!state.loadedAt) {
+    /* 空数据/错误：两种形态都给可读反馈 */
+    if (state.status === 'error' && !state.todos.length) {
+      boxCompact.innerHTML = '<div class="foot">读取失败</div>';
+      boxStandard.innerHTML = retryHtml(state.error);
+      return;
+    }
+    if (state.status === 'loading' && !state.todos.length) {
       boxCompact.innerHTML = '<div class="foot">读取中…</div>';
-      boxStandard.innerHTML = '<div class="empty">读取中…</div>';
+      boxStandard.innerHTML = loadingHtml();
       return;
     }
 
-    /* 紧凑：一个主数字（逾期优先，其次今天、临期）+ 一行副信息 */
+    var r = summary();
+    var s = r.s;
+
+    /* 紧凑：一个主数字（逾期优先 → 今天 → 临期）+ 一行副信息 */
     var hero;
     if (s.overdue > 0) hero = { n: s.overdue, cls: 'red', lbl: '逾期' };
     else if (s.today > 0) hero = { n: s.today, cls: 'orange', lbl: '今天到期' };
@@ -114,6 +243,8 @@
         }).join('')
       : '<div class="empty">' + (s.active ? '没有临期待办' : '暂无带截止日的待办') + '</div>';
 
+    syncSurface();
+
     boxStandard.innerHTML =
       '<div class="head"><span class="title">待办倒计时</span><span class="more">看全部 ›</span></div>' +
       '<div class="tiles">' +
@@ -124,11 +255,24 @@
       '<div class="list">' + itemsHtml + '</div>';
   }
 
+  /* ------------------------------------------------------------------ */
+  /* 交互                                                               */
+  /* ------------------------------------------------------------------ */
+
   function openView() {
     try { xhub().runtime.open('view'); } catch (e) {}
   }
 
-  card.addEventListener('click', openView);
+  card.addEventListener('click', function (e) {
+    if (e.target.closest('[data-act="retry"]')) {
+      e.stopPropagation();
+      state.todos = [];
+      load();
+      return;
+    }
+    openView();
+  });
+
   card.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openView(); }
   });
@@ -142,15 +286,31 @@
 
   setInterval(function () {
     state.nowMs = Date.now();
-    if (state.todos.length) render();
+    if (state.status === 'ready') render();
   }, 60000);
+
+  /* ------------------------------------------------------------------ */
+
+  // 任何未捕获异常都落到卡片上，绝不静默停在“读取中…”
+  function fail(err) {
+    state.status = 'error';
+    state.error = (err && (err.message || err.reason && err.reason.message)) || '脚本错误';
+    try {
+      boxStandard.innerHTML = retryHtml(state.error);
+      boxCompact.innerHTML = '<div class="foot">加载失败</div>';
+    } catch (e) {}
+  }
+  window.addEventListener('error', function (e) { fail(e.error || e.message); });
+  window.addEventListener('unhandledrejection', function (e) { fail(e.reason); });
 
   (function boot() {
     if (!xhub()) {
-      boxStandard.innerHTML = '<div class="empty">未检测到 x-hub 宿主<br />请在扩展中心打开，或加 ?mock=1 预览</div>';
+      state.status = 'error';
+      state.error = '未检测到 x-hub 宿主，请在扩展中心打开';
+      render();
       return;
     }
-    // 宿主没注入主题变量时，用属性兜底，避免深色宿主上出现浅色卡片
+    // 宿主没注入主题变量时兜底，避免深色宿主上出现浅色卡片
     if (!document.documentElement.getAttribute('data-xhub-theme')) {
       document.documentElement.setAttribute('data-xhub-theme', 'dark');
     }
@@ -158,8 +318,11 @@
     try {
       if (xhub().events && xhub().events.on) {
         xhub().events.on('xhub:variant-changed', function (v) { applyVariant(v); });
+        if (xhub().events.on) {
+          xhub().events.on('theme-changed', function () { setTimeout(syncSurface, 50); });
+        }
       }
     } catch (e) {}
-    load();
+    load().catch(fail);
   })();
 })();
