@@ -1,12 +1,13 @@
 /*!
  * 主题令牌：优先吃宿主注入的 --xhub-*，没有宿主时（浏览器预览）用浅/深兜底。
- * 深浅两套都要写，避免无宿主时深色主题露白。
+ * 只用普通颜色值——不依赖 color-mix / 相对颜色语法。宿主 WebView 版本参差，
+ * 一条不支持的颜色声明会让整条 background 失效，表现就是卡片“什么都没有”。
  */
 
 :root {
   --tc-page: var(--xhub-page-bg, transparent);
   --tc-surface: var(--xhub-surface, #ffffff);
-  --tc-surface-2: #f7f8fb;
+  --tc-surface-2: var(--xhub-surface-2, #f7f8fb);
   --tc-text-1: var(--xhub-text-1, #15171c);
   --tc-text-2: var(--xhub-text-2, #5a6070);
   --tc-text-3: var(--xhub-text-3, #8d93a3);
@@ -15,18 +16,18 @@
 
   --tc-red: var(--xhub-red, #e5484d);
   --tc-orange: var(--xhub-orange, #f76b15);
-  --tc-amber: color-mix(in srgb, var(--xhub-yellow, #d9a406) 68%, #3a2a00);
+  --tc-amber: #9a6a00; /* 浅色主题下用深琥珀，亮黄在白底上不可读 */
   --tc-blue: var(--xhub-blue, #3e63dd);
   --tc-green: var(--xhub-green, #30a46c);
   --tc-gray: #8d93a3;
 
-  --tc-radius: var(--xhub-radius-lg, 14px);
+  --tc-radius: 14px;
   --tc-shadow: 0 1px 2px rgba(16, 20, 32, 0.04), 0 8px 24px rgba(16, 20, 32, 0.05);
 }
 
 :root[data-xhub-theme='dark'] {
   --tc-surface: var(--xhub-surface, #191b21);
-  --tc-surface-2: #1f2229;
+  --tc-surface-2: var(--xhub-surface-2, #1f2229);
   --tc-text-1: var(--xhub-text-1, #eceef4);
   --tc-text-2: var(--xhub-text-2, #a3a9b8);
   --tc-text-3: var(--xhub-text-3, #767d8d);
@@ -38,7 +39,7 @@
 
 * { box-sizing: border-box; }
 
-/* 统一兜底：组件里给了 display 的元素，hidden 属性仍要生效 */
+/* 组件里给了 display 的元素，hidden 属性仍要生效 */
 [hidden] { display: none !important; }
 
 html, body {
@@ -66,7 +67,7 @@ button {
   font-feature-settings: 'tnum' 1;
 }
 
-/* 状态色（唯一的色彩来源，行/徽标/圆点全部引用它） */
+/* 状态色：行、徽标、圆点的唯一色彩来源 */
 [data-tone='red'] { --tone: var(--tc-red); }
 [data-tone='orange'] { --tone: var(--tc-orange); }
 [data-tone='amber'] { --tone: var(--tc-amber); }
@@ -82,12 +83,12 @@ button {
   border-radius: 999px;
   font-size: 11px;
   color: var(--tc-text-2);
-  background: color-mix(in srgb, var(--tc-surface) 88%, transparent);
+  background: var(--tc-surface);
   border: 1px solid var(--tc-border);
   pointer-events: none;
 }
 
-/* 预览台里宿主不存在，需要自己铺一层页面底；真宿主有壁纸时不能铺 */
+/* 预览台里宿主不存在，需要自己铺一层页面底；真宿主有壁纸时不铺 */
 :root[data-xhub-preview] body {
   background: var(--xhub-page-bg, #14161b);
 }

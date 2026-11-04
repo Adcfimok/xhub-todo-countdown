@@ -1,7 +1,7 @@
 {
   "id": "com.zhou.todo-countdown",
   "name": "待办倒计时",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "runtime": "web",
   "kind": "view",
   "surfaces": ["module", "view"],

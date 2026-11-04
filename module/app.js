@@ -72,6 +72,16 @@
   }
 
   function render() {
+    try {
+      renderUnsafe();
+    } catch (err) {
+      var msg = (err && err.message) || '渲染失败';
+      boxStandard.innerHTML = '<div class="empty">加载失败：' + esc(msg) + '</div>';
+      boxCompact.innerHTML = '<div class="foot">加载失败</div>';
+    }
+  }
+
+  function renderUnsafe() {
     var r = summary();
     var s = r.s;
 
@@ -137,8 +147,12 @@
 
   (function boot() {
     if (!xhub()) {
-      boxStandard.innerHTML = '<div class="empty">未检测到 x-hub 宿主</div>';
+      boxStandard.innerHTML = '<div class="empty">未检测到 x-hub 宿主<br />请在扩展中心打开，或加 ?mock=1 预览</div>';
       return;
+    }
+    // 宿主没注入主题变量时，用属性兜底，避免深色宿主上出现浅色卡片
+    if (!document.documentElement.getAttribute('data-xhub-theme')) {
+      document.documentElement.setAttribute('data-xhub-theme', 'dark');
     }
     applyVariant(readVariant());
     try {
