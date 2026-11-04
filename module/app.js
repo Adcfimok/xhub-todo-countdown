@@ -195,21 +195,27 @@
 
   function syncSurface() {
     try {
-      var page = readVar('--xhub-page-bg') || [20, 22, 27, 1];
-      var bg = hostCardBg();
-      var surface;
+      // 以“实际生效的文字色”为锚点决定卡面，然后用**内联样式 + 内联自定义属性**写死配色。
+      // 实测宿主里出现过样式表 background 失效、文字色与卡面来源不一致的情况（白底浅字），
+      // 内联样式不参与层叠竞争，且自定义属性会继承给子元素，最稳。
+      var bodyColor = parseColor(getComputedStyle(document.body).color) || [236, 238, 244, 1];
+      var dark = luminance(bodyColor) > 0.5;
 
-      if (bg) {
-        card.style.background = 'var(--xhub-bg-card)';
-        surface = luminance(composite(bg, page)) > 0.42 ? 'light' : 'dark';
-      } else {
-        card.style.background = '';           // 交回 CSS 的确定底色
-        var text = readVar('--xhub-text-1') ||
-          parseColor(getComputedStyle(document.body).color) || [236, 238, 244, 1];
-        surface = luminance(text) > 0.5 ? 'dark' : 'light';
-      }
+      card.style.setProperty('background-color', dark ? 'rgba(24,26,33,0.96)' : 'rgba(255,255,255,0.96)', 'important');
+      card.style.setProperty('color', dark ? '#eceef4' : '#15171c', 'important');
+      card.setAttribute('data-surface', dark ? 'dark' : 'light');
 
-      card.setAttribute('data-surface', surface);
+      var palette = dark
+        ? {
+            '--tc-text-1': '#eceef4', '--tc-text-2': '#b9bfcd', '--tc-text-3': '#8f96a5',
+            '--tc-red': '#ff6b6f', '--tc-orange': '#ff8a3d', '--tc-amber': '#f5c542', '--tc-blue': '#7aa2ff'
+          }
+        : {
+            '--tc-text-1': '#15171c', '--tc-text-2': '#4a5060', '--tc-text-3': '#6b7280',
+            '--tc-red': '#c62b30', '--tc-orange': '#c2570a', '--tc-amber': '#8a5f00', '--tc-blue': '#2f56c9'
+          };
+
+      for (var k in palette) card.style.setProperty(k, palette[k]);
     } catch (e) { /* 量不到就保持 CSS 默认（深色） */ }
   }
 
@@ -234,6 +240,9 @@
     } catch (err) {
       boxStandard.innerHTML = retryHtml((err && err.message) || '渲染失败');
       boxCompact.innerHTML = '<div class="foot">加载失败</div>';
+    } finally {
+      // DOM 就位后再统一上色：卡面 + 磁贴 + 分隔线
+      syncSurface();
     }
   }
 
@@ -275,8 +284,6 @@
             '<span class="d">' + esc(shortLabel(it)) + '</span></div>';
         }).join('')
       : '<div class="empty">' + (s.active ? '没有临期待办' : '暂无带截止日的待办') + '</div>';
-
-    syncSurface();
 
     boxStandard.innerHTML =
       '<div class="head"><span class="title">待办倒计时</span><span class="more">看全部 ›</span></div>' +
