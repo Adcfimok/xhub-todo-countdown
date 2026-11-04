@@ -1,0 +1,8 @@
+# 统一按 LF 存储，检出时按平台转换，避免 Windows 上整仓 CRLF 噪音
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.zip binary
+*.woff binary
+*.woff2 binary

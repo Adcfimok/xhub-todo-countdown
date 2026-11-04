@@ -1,0 +1,33 @@
+# ---- 系统 ----
+Thumbs.db
+Desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+
+# ---- 编辑器 / IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- 依赖与构建产物（本项目无构建步骤，防止误提交）----
+node_modules/
+dist/
+build/
+
+# ---- x-hub 扩展运行时产物 ----
+# 宿主会把用户改过的扩展配置写到扩展目录，属于本机状态，不应入库
+.config.json
+*.log
+
+# ---- 本地预览 / 调试临时文件 ----
+_shot_*.png
+_raw.png
+_probe.*
+_tmp.html
+debug-*.html
+
+# ---- 打包产物 ----
+*.zip
+*.tar.gz

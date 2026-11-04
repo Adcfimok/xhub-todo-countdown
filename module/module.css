@@ -1,0 +1,222 @@
+/* 工作台卡片（module 形态）：同一份 HTML，按 data-xhub-variant 切两套排版 */
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+body { font-size: 12px; }
+
+.card {
+  container-type: size;
+  height: 100%;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--tc-accent);
+  outline-offset: -2px;
+}
+
+/* ---------- 紧凑布局 ---------- */
+.compact { display: none; }
+
+:root[data-xhub-variant='compact'] .standard { display: none; }
+:root[data-xhub-variant='compact'] .compact { display: flex; }
+
+.compact {
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.compact .hero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1;
+  min-height: 0;
+}
+
+.compact .n {
+  font-size: clamp(17px, 30cqh, 32px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.compact .lbl {
+  font-size: clamp(9px, 11cqh, 12px);
+  color: var(--tc-text-2);
+  white-space: nowrap;
+}
+
+.compact .n.red { color: var(--tc-red); }
+.compact .n.orange { color: var(--tc-orange); }
+.compact .n.amber { color: var(--tc-amber); }
+.compact .n.dim { color: var(--tc-text-2); }
+
+.compact .sub {
+  font-size: clamp(9px, 11cqh, 11.5px);
+  color: var(--tc-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compact .sub b { font-weight: 600; color: var(--tc-text-2); }
+
+.compact .foot {
+  margin-top: 1px;
+  font-size: clamp(9px, 10cqh, 11px);
+  color: var(--tc-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 2×2 的格子可能只有 86px 高：只保留主数字与一行副信息 */
+@container (max-height: 118px) {
+  .compact .foot { display: none; }
+  .compact { gap: 0; }
+}
+
+/* ---------- 标准布局 ---------- */
+.standard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.head .title {
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--tc-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: auto;
+}
+
+.head .more {
+  font-size: 11px;
+  color: var(--tc-text-3);
+  white-space: nowrap;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.tile {
+  padding: 6px 8px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--tone) 8%, var(--tc-surface));
+  border: 1px solid color-mix(in srgb, var(--tone) 18%, var(--tc-border));
+  min-width: 0;
+}
+
+.tile .n {
+  display: block;
+  font-size: clamp(16px, 17cqh, 22px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--tone);
+  font-variant-numeric: tabular-nums;
+}
+
+.tile .l {
+  display: block;
+  font-size: 10.5px;
+  color: var(--tc-text-2);
+  white-space: nowrap;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--tc-border) 60%, transparent);
+}
+
+.item:last-child { border-bottom: 0; }
+
+.item .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tone);
+  flex: none;
+}
+
+.item .t {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--tc-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item .d {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tone);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--tc-text-3);
+  font-size: 11.5px;
+  text-align: center;
+  min-height: 0;
+}
+
+/* 极矮格子（宿主 2×2 可能只有 86px）：去掉次要信息，只保数字 */
+@container (max-height: 110px) {
+  .standard .list { display: none; }
+  .standard .tiles { flex: 1; align-content: center; }
+  .card { padding: 8px 10px; gap: 4px; }
+}

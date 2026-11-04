@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>待办倒计时 · 预览台</title>
+  <style>
+    :root {
+      --bg: #0f1116;
+      --panel: #171a21;
+      --line: rgba(255, 255, 255, 0.09);
+      --t1: #eceef4;
+      --t2: #a3a9b8;
+      --t3: #767d8d;
+      --accent: #5b6cff;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--t1);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .brand { display: flex; align-items: center; gap: 8px; margin-right: 6px; }
+    .brand svg { display: block; }
+    .brand b { font-size: 14px; font-weight: 650; }
+    .brand span { color: var(--t3); font-size: 11.5px; }
+
+    label { display: inline-flex; align-items: center; gap: 6px; color: var(--t2); font-size: 12px; }
+    select {
+      height: 28px; padding: 0 6px; border-radius: 7px;
+      border: 1px solid var(--line); background: #22262f; color: var(--t1);
+      outline: none; font: inherit; font-size: 12px;
+    }
+    button {
+      height: 28px; padding: 0 11px; border-radius: 7px;
+      border: 1px solid var(--line); background: #22262f; color: var(--t1);
+      font: inherit; font-size: 12px; cursor: pointer;
+    }
+    button:hover { border-color: rgba(255, 255, 255, 0.2); }
+    .spacer { margin-left: auto; }
+    .hint { color: var(--t3); font-size: 11.5px; }
+
+    .stage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      padding: 16px;
+      gap: 16px;
+    }
+    .frame-wrap {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #14161b;
+    }
+    .frame-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--t3);
+      font-size: 11px;
+      background: #171a21;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #2b2f38; }
+    iframe { flex: 1; width: 100%; border: 0; background: transparent; }
+    iframe.card-mode { background: #14161b; }
+
+    aside {
+      width: 260px;
+      flex: none;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: var(--panel);
+      font-size: 12px;
+      color: var(--t2);
+      overflow: auto;
+    }
+    aside h3 { margin: 0 0 8px; font-size: 12.5px; color: var(--t1); }
+    aside ul { margin: 0 0 14px; padding-left: 16px; }
+    aside li { margin-bottom: 6px; }
+    aside code {
+      padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, 0.07);
+      font-size: 11px; color: #c9cdf7;
+    }
+    .kbd { color: var(--t3); font-size: 11px; }
+
+    @media (max-width: 900px) {
+      aside { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 128 128" aria-hidden="true">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B6CFF"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient></defs>
+        <rect width="128" height="128" rx="30" fill="url(#g)"/>
+        <rect x="30" y="34" width="68" height="64" rx="12" fill="none" stroke="#fff" stroke-width="6" opacity=".95"/>
+        <rect x="30" y="34" width="68" height="18" rx="9" fill="#fff" opacity=".9"/>
+        <circle cx="64" cy="76" r="15" fill="none" stroke="#fff" stroke-width="6"/>
+        <path d="M64 68v9l7 5" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+      <div><b>待办倒计时</b><br /><span>扩展预览台 · 模拟数据</span></div>
+    </div>
+
+    <label>形态
+      <select id="surface">
+        <option value="view">主视图（view）</option>
+        <option value="standard">工作台卡片 · 标准</option>
+        <option value="compact">工作台卡片 · 紧凑</option>
+      </select>
+    </label>
+
+    <label>主题
+      <select id="theme">
+        <option value="dark">深色</option>
+        <option value="light">浅色</option>
+      </select>
+    </label>
+
+    <label>场景
+      <select id="scene">
+        <option value="normal">正常（12 条）</option>
+        <option value="empty">空列表</option>
+        <option value="crowded">超长列表（120 条）</option>
+        <option value="dirty">脏数据</option>
+        <option value="alldone">全部已完成</option>
+      </select>
+    </label>
+
+    <label>时间旅行
+      <select id="offset">
+        <option value="0">今天</option>
+        <option value="1">+1 天</option>
+        <option value="2">+2 天</option>
+        <option value="3">+3 天</option>
+        <option value="7">+7 天</option>
+      </select>
+    </label>
+
+    <button id="reload">重新加载</button>
+    <span class="hint spacer" id="status">—</span>
+  </header>
+
+  <div class="stage">
+    <div class="frame-wrap">
+      <div class="frame-bar"><span class="dot"></span><span id="frameTitle">view/index.html</span></div>
+      <iframe id="frame" title="扩展预览"></iframe>
+    </div>
+
+    <aside>
+      <h3>这个预览台做了什么</h3>
+      <ul>
+        <li>用 <code>shared/mock-bridge.js</code> 顶替宿主的 <code>window.xhub</code>，接口与真宿主一致。</li>
+        <li>「时间旅行」会整体推进 <code>Date.now()</code>，可直接看逾期、临期、跨天换日的变化。</li>
+        <li>卡片形态按 <code>data-xhub-variant</code> 切换，和宿主里一致。</li>
+      </ul>
+      <h3>真机怎么装</h3>
+      <ul>
+        <li>x-hub → 扩展中心 → 我的扩展 → 添加本目录（含 <code>manifest.json</code>）。</li>
+        <li>装好后可在工作台添加「待办倒计时」卡片，或从扩展列表打开主视图。</li>
+      </ul>
+      <h3 class="kbd">说明</h3>
+      <div class="kbd">预览里的数据是模拟的，不会读写你的真实待办。</div>
+    </aside>
+  </div>
+
+  <script>
+    var frame = document.getElementById('frame');
+    var surface = document.getElementById('surface');
+    var theme = document.getElementById('theme');
+    var scene = document.getElementById('scene');
+    var offset = document.getElementById('offset');
+    var status = document.getElementById('status');
+    var frameTitle = document.getElementById('frameTitle');
+
+    function buildUrl() {
+      var s = surface.value;
+      var isView = s === 'view';
+      var path = isView ? '../view/index.html' : '../module/index.html';
+      var q = new URLSearchParams();
+      q.set('mock', '1');
+      q.set('theme', theme.value);
+      q.set('scene', scene.value);
+      if (offset.value !== '0') q.set('offset', offset.value);
+      if (!isView) q.set('xhub-variant', s);
+      return path + '?' + q.toString();
+    }
+
+    function reload() {
+      frame.classList.toggle('card-mode', surface.value !== 'view');
+      frame.style.maxWidth = surface.value === 'view' ? '' : (surface.value === 'compact' ? '260px' : '520px');
+      frame.style.maxHeight = surface.value === 'view' ? '' : '320px';
+      frame.src = buildUrl();
+      var names = { view: '主视图 · view/index.html', standard: '工作台卡片 · 标准形态', compact: '工作台卡片 · 紧凑形态' };
+      frameTitle.textContent = names[surface.value] + '  ·  ' + scene.options[scene.selectedIndex].text + (offset.value !== '0' ? '  ·  时间 +' + offset.value + ' 天' : '');
+      status.textContent = '已加载 · ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    }
+
+    [surface, theme, scene, offset].forEach(function (el) {
+      el.addEventListener('change', reload);
+    });
+    document.getElementById('reload').addEventListener('click', reload);
+
+    reload();
+  </script>
+</body>
+</html>
