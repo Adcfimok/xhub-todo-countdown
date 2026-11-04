@@ -141,7 +141,8 @@
   (function applyTheme() {
     var root = document.documentElement;
     root.setAttribute('data-xhub-theme', theme.mode);
-    root.setAttribute('data-xhub-preview', '1');
+    // nobg=1：模拟“宿主在卡片背后垫了别的颜色”，此时不铺预览底色
+    if (qs.get('nobg') !== '1') root.setAttribute('data-xhub-preview', '1');
     var t = theme.tokens;
     var map = {
       '--xhub-accent': t.accent,

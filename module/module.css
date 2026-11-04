@@ -8,6 +8,21 @@ html, body {
 
 body { font-size: 12px; }
 
+/* 卡片自己铺一层主题半透明表面：
+   之前 .card 是 transparent，实际靠 iframe 背后的底色，宿主垫浅色时就会出现白底白字。
+   现在表面与文字同源（都来自 --xhub-*），深/浅主题、壁纸态都能保证对比度。 */
+:root {
+  --tc-card-surface: var(--xhub-surface, #ffffff);
+  --tc-card-bg: color-mix(in srgb, var(--tc-card-surface) 88%, transparent);
+  --tc-card-tile: color-mix(in srgb, var(--tc-card-surface) 72%, transparent);
+  --tc-card-border: var(--xhub-border, rgba(18, 22, 33, 0.09));
+}
+
+:root[data-xhub-theme='dark'] {
+  --tc-card-surface: var(--xhub-surface, #191b21);
+  --tc-card-border: var(--xhub-border, rgba(255, 255, 255, 0.09));
+}
+
 .card {
   container-type: size;
   height: 100%;
@@ -16,7 +31,11 @@ body { font-size: 12px; }
   flex-direction: column;
   gap: 8px;
   border-radius: 12px;
-  background: transparent;
+  background: var(--tc-card-bg);
+  border: 1px solid var(--tc-card-border);
+  backdrop-filter: blur(16px) saturate(115%);
+  -webkit-backdrop-filter: blur(16px) saturate(115%);
+  box-shadow: 0 1px 2px rgba(16, 20, 32, 0.05);
   cursor: pointer;
 }
 
@@ -123,7 +142,7 @@ body { font-size: 12px; }
 
 .head .more {
   font-size: 11px;
-  color: var(--tc-text-3);
+  color: var(--tc-text-2);
   white-space: nowrap;
 }
 
@@ -137,8 +156,8 @@ body { font-size: 12px; }
 .tile {
   padding: 6px 8px;
   border-radius: 9px;
-  background: color-mix(in srgb, var(--tone) 8%, var(--tc-surface));
-  border: 1px solid color-mix(in srgb, var(--tone) 18%, var(--tc-border));
+  background: color-mix(in srgb, var(--tone) 10%, var(--tc-card-tile));
+  border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--tc-card-border));
   min-width: 0;
 }
 
@@ -154,6 +173,7 @@ body { font-size: 12px; }
 .tile .l {
   display: block;
   font-size: 10.5px;
+  font-weight: 500;
   color: var(--tc-text-2);
   white-space: nowrap;
 }
@@ -189,6 +209,7 @@ body { font-size: 12px; }
   flex: 1;
   min-width: 0;
   font-size: 11.5px;
+  font-weight: 500;
   color: var(--tc-text-1);
   white-space: nowrap;
   overflow: hidden;
