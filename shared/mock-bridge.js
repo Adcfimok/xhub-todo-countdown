@@ -169,6 +169,8 @@
       '--xhub-orange': t.orange,
       '--xhub-radius-lg': t.radiusLg
     };
+    // bg=empty：模拟宿主没给（或给了空值）卡片底色，用于验证兜底
+    if (bgOverride === 'empty') delete map['--xhub-bg-card'];
     for (var k in map) root.style.setProperty(k, map[k]);
   })();
 

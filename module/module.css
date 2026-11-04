@@ -25,15 +25,18 @@ body { font-size: 12px; }
   flex-direction: column;
   gap: 8px;
   border-radius: 12px;
-  background: var(--xhub-bg-card, rgba(24, 26, 33, 0.72));
-  border: 1px solid var(--xhub-border, rgba(255, 255, 255, 0.10));
-  color: var(--xhub-text-1, #eceef4);
+  /* 先用确定值兜底：宿主变量为空时 var() 会让整条声明失效，卡片就露出 iframe 白底 */
+  background: rgba(24, 26, 33, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: #eceef4;
   cursor: pointer;
   overflow: hidden;
 }
 
 /* 按实际卡面反色：文字与状态色一起切换，避免“深卡 + 浅色主题的暗灰标签” */
 .card[data-surface='dark'] {
+  background: rgba(24, 26, 33, 0.86);
+  border-color: rgba(255, 255, 255, 0.10);
   color: #eceef4;
   --tc-text-1: #eceef4;
   --tc-text-2: #b9bfcd;
@@ -45,6 +48,8 @@ body { font-size: 12px; }
 }
 
 .card[data-surface='light'] {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(18, 22, 33, 0.10);
   color: #15171c;
   --tc-text-1: #15171c;
   --tc-text-2: #4a5060;
@@ -277,6 +282,11 @@ body { font-size: 12px; }
 }
 
 .retry:hover { background: rgba(127, 127, 127, 0.20); }
+
+/* 格子很高时内容居中，避免一大片空底 */
+@media (min-height: 300px) {
+  .standard { justify-content: center; }
+}
 
 /* 标准形态放矮时，先牺牲列表 */
 @media (max-height: 132px) {

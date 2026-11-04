@@ -166,18 +166,51 @@
     return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
   }
 
+  function readVar(name) {
+    try {
+      return parseColor(getComputedStyle(document.documentElement).getPropertyValue(name));
+    } catch (e) { return null; }
+  }
+
+  function composite(fg, bg) {
+    var a = fg[3] === undefined ? 1 : fg[3];
+    return [0, 1, 2].map(function (i) { return fg[i] * a + bg[i] * (1 - a); });
+  }
+
+  /**
+   * 宿主可能把 --xhub-bg-card 设成空值/非法值，此时 var() 会让 background 整条失效，
+   * 卡片直接露出 iframe 的白底。这里用探针实测它到底能不能解析成颜色：
+   * 能 → 跟随宿主卡片色；不能 → 由宿主文字色推卡面明暗，用组件自带的底色兜底。
+   */
+  function hostCardBg() {
+    try {
+      var probe = document.createElement('i');
+      probe.style.cssText = 'position:fixed;left:-9px;top:-9px;width:1px;height:1px;background:var(--xhub-bg-card)';
+      document.body.appendChild(probe);
+      var c = parseColor(getComputedStyle(probe).backgroundColor);
+      probe.remove();
+      return c && c[3] > 0.02 ? c : null;
+    } catch (e) { return null; }
+  }
+
   function syncSurface() {
     try {
-      var bg = parseColor(getComputedStyle(card).backgroundColor);
-      if (!bg) return;
-      var backdrop = parseColor(getComputedStyle(document.documentElement).getPropertyValue('--xhub-page-bg')) ||
-        [20, 22, 27, 1];
-      // 半透明卡面：与页面底色做 alpha 合成，再算亮度
-      var a = bg[3] === undefined ? 1 : bg[3];
-      var mix = [0, 1, 2].map(function (i) { return bg[i] * a + backdrop[i] * (1 - a); });
-      var light = luminance(mix) > 0.42;
-      card.setAttribute('data-surface', light ? 'light' : 'dark');
-    } catch (e) { /* 量不到就保持默认 */ }
+      var page = readVar('--xhub-page-bg') || [20, 22, 27, 1];
+      var bg = hostCardBg();
+      var surface;
+
+      if (bg) {
+        card.style.background = 'var(--xhub-bg-card)';
+        surface = luminance(composite(bg, page)) > 0.42 ? 'light' : 'dark';
+      } else {
+        card.style.background = '';           // 交回 CSS 的确定底色
+        var text = readVar('--xhub-text-1') ||
+          parseColor(getComputedStyle(document.body).color) || [236, 238, 244, 1];
+        surface = luminance(text) > 0.5 ? 'dark' : 'light';
+      }
+
+      card.setAttribute('data-surface', surface);
+    } catch (e) { /* 量不到就保持 CSS 默认（深色） */ }
   }
 
   /* ------------------------------------------------------------------ */
