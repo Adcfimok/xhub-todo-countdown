@@ -1,9 +1,12 @@
 # 待办倒计时 · x-hub 扩展
 
-给 [x-hub](https://x-hub.xfactor.top) 的待办加一层**倒计时**：按截止日期算剩余天数，
+给 [x-hub](https://github.com/dckxx/x-hub) 的待办加一层**倒计时**：按截止日期算剩余天数，
 逾期 / 今天 / 临期分色，临期自动提醒，并带一张工作台卡片。
 
 > 非官方扩展。只读 `todos`，不修改 x-hub 本体、不写数据库，卸载即还原。
+
+宿主项目：[**dckxx/x-hub**](https://github.com/dckxx/x-hub) —— 本地优先的个人桌面效率工作台，Tauri 2 + Vue 3 + TypeScript + Rust，数据全部本地存储。
+本扩展遵循它的扩展规范（`manifest.json` + `window.xhub` 桥），只申请 `data:read` 与 `notify` 两项权限。
 
 ![主视图 · 深色](docs/screenshots/view-dark.png)
 
@@ -101,9 +104,11 @@ docs/待办倒计时-设计与实现.md   设计说明：数据结构、计算�
 
 ## 兼容性
 
+- 宿主项目：[dckxx/x-hub](https://github.com/dckxx/x-hub)
 - 目标版本：**x-hub 0.9.1**（Tauri 2 / Vue 3 / 桥 API `data.todos.list`）。
 - 依赖宿主能力：`data.todos.list`；提醒依赖 `notify` 权限。
 - 更早版本未验证；宿主若调整桥 API，`requires` 会在扩展中心标「缺能力」。
+- 想让它变成内置功能（列表行内倒计时）可以改宿主源码，改动面很小，见[设计说明附录](docs/待办倒计时-设计与实现.md#附录合入内置待办列表改宿主源码)。
 
 ## 许可
 
