@@ -1,7 +1,7 @@
 {
   "id": "com.zhou.todo-countdown",
   "name": "待办倒计时",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "runtime": "web",
   "kind": "view",
   "surfaces": ["module", "view"],
@@ -11,10 +11,10 @@
     "module": "./module/index.html"
   },
   "moduleVariants": [
-    { "id": "compact", "name": "紧凑", "minW": 2, "minH": 2, "idealW": 2, "idealH": 2 },
-    { "id": "standard", "name": "标准", "minW": 3, "minH": 3, "idealW": 4, "idealH": 3 }
+    { "id": "compact", "name": "紧凑", "minW": 2, "minH": 2, "idealW": 2, "idealH": 3 },
+    { "id": "wide", "name": "通栏", "minW": 4, "minH": 2, "idealW": 4, "idealH": 3 }
   ],
-  "moduleOptions": { "defaultHideTitle": true },
+  "moduleOptions": { "defaultHideTitle": false },
   "permissions": ["data:read", "notify"],
   "requires": ["data.todos.list"],
   "icon": "./icon.svg",

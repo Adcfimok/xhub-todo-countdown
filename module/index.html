@@ -2,17 +2,243 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>待办倒计时</title>
-  <link rel="stylesheet" href="../shared/theme.css" />
-  <link rel="stylesheet" href="./module.css" />
+  <style>
+    /* 卡片约定（对齐宿主内置模块与 com.mipc.mihome）：
+       —— 宿主在外面已经套好玻璃卡（背景 / 圆角 / 边框 / 阴影都由宿主画），
+          这里 body 必须透明，只负责 12px 内边距与内容排版；
+       —— manifest 声明 defaultHideTitle:false，标题栏由宿主绘制，卡面不再画标题；
+       —— 视口高度可能只有 ~86px，尺寸全部用 cqh 跟着格子缩放。 */
+
+    :root {
+      color-scheme: light;
+      --ink: var(--xhub-text-1, #1f2230);
+      --ink-2: var(--xhub-text-2, #5b6070);
+      --ink-3: var(--xhub-text-3, #8b90a0);
+      --line: var(--xhub-border, rgba(0, 0, 0, 0.1));
+      --well: var(--xhub-bg-card, rgba(255, 255, 255, 0.9));
+      --tile: rgba(0, 0, 0, 0.035);
+      --red: var(--xhub-red, #d64545);
+      --orange: var(--xhub-orange, #c2570a);
+      --amber: var(--xhub-yellow, #8a5f00);
+      --blue: var(--xhub-blue, #3e63dd);
+    }
+
+    :root[data-xhub-theme='dark'] {
+      color-scheme: dark;
+      --ink: var(--xhub-text-1, #e8e9f0);
+      --ink-2: var(--xhub-text-2, #a2a7b8);
+      --ink-3: var(--xhub-text-3, #767c8f);
+      --line: var(--xhub-border, rgba(255, 255, 255, 0.12));
+      --well: var(--xhub-bg-card, rgba(255, 255, 255, 0.04));
+      --tile: rgba(255, 255, 255, 0.06);
+      --red: var(--xhub-red, #ff7b7b);
+      --orange: var(--xhub-orange, #ff9a52);
+      --amber: var(--xhub-yellow, #f5c542);
+      --blue: var(--xhub-blue, #7aa2ff);
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      padding: 12px;
+      box-sizing: border-box;
+      background: transparent;
+      color: var(--ink);
+      font-family: system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      font-size: 13px;
+      line-height: 1.35;
+      container-type: size;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .wrap {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(4px, 3cqh, 8px);
+      min-height: 0;
+    }
+
+    /* ---------- 通栏（4×3）：三段统计 + 最近三条 ---------- */
+    .wide {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(4px, 3cqh, 8px);
+      min-height: 0;
+      flex: 1;
+    }
+
+    .tiles {
+      display: flex;
+      gap: clamp(4px, 2.4cqh, 7px);
+      flex: none;
+      min-width: 0;
+    }
+
+    .tile {
+      flex: 1;
+      min-width: 0;
+      padding: clamp(3px, 2cqh, 6px) clamp(6px, 1.6cqw, 9px);
+      border-radius: 8px;
+      background: var(--tile);
+      border: 1px solid var(--line);
+    }
+
+    .tile b {
+      display: block;
+      font-size: clamp(15px, 13cqh, 22px);
+      font-weight: 650;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+
+    .tile span {
+      display: block;
+      margin-top: 1px;
+      font-size: clamp(10px, 7cqh, 11.5px);
+      color: var(--ink-3);
+      white-space: nowrap;
+    }
+
+    .tile[data-tone='red'] b { color: var(--red); }
+    .tile[data-tone='orange'] b { color: var(--orange); }
+    .tile[data-tone='amber'] b { color: var(--amber); }
+
+    .rows {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(2px, 1.6cqh, 5px);
+      min-height: 0;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex: none;
+      background: var(--ink-3);
+    }
+
+    .row[data-tone='red'] .dot { background: var(--red); }
+    .row[data-tone='orange'] .dot { background: var(--orange); }
+    .row[data-tone='amber'] .dot { background: var(--amber); }
+    .row[data-tone='blue'] .dot { background: var(--blue); }
+
+    .row .nm {
+      flex: 1;
+      min-width: 0;
+      font-size: clamp(11px, 8.4cqh, 13px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .row .d {
+      flex: none;
+      font-size: clamp(10px, 7cqh, 12px);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-2);
+    }
+
+    .row[data-tone='red'] .d { color: var(--red); }
+    .row[data-tone='orange'] .d { color: var(--orange); }
+    .row[data-tone='amber'] .d { color: var(--amber); }
+    .row[data-tone='blue'] .d { color: var(--blue); }
+
+    /* ---------- 紧凑（2×2）：一个主数字 ---------- */
+    .compact {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    :root[data-xhub-variant='compact'] .wide { display: none; }
+    :root[data-xhub-variant='compact'] .compact { display: flex; }
+
+    .compact .n {
+      font-size: clamp(20px, 30cqh, 34px);
+      font-weight: 650;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .compact .n.red { color: var(--red); }
+    .compact .n.orange { color: var(--orange); }
+    .compact .n.amber { color: var(--amber); }
+    .compact .n.dim { color: var(--ink-2); }
+
+    .compact .lbl {
+      font-size: clamp(10px, 7cqh, 12px);
+      color: var(--ink-3);
+      white-space: nowrap;
+    }
+
+    .compact .sub {
+      margin-top: 2px;
+      font-size: clamp(10px, 7cqh, 11.5px);
+      color: var(--ink-3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ---------- 状态 ---------- */
+    .hint {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--ink-3);
+      text-align: center;
+      font-size: clamp(11px, 8cqh, 13px);
+    }
+
+    .hint.error { color: var(--red); }
+
+    button.act {
+      font: inherit;
+      color: var(--ink);
+      background: var(--well);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 14px;
+      cursor: pointer;
+    }
+
+    button.act:hover { border-color: var(--xhub-brand, #ff6900); }
+
+    /* 矮格子：先收副信息，保住主数字 */
+    @media (max-height: 96px) {
+      body { padding: 10px; }
+      .compact .sub { display: none; }
+    }
+  </style>
 </head>
 <body>
-  <div class="card" id="card" role="button" tabindex="0" aria-label="待办倒计时，点击查看全部">
-    <!-- 紧凑：2×2 小格子只留两个数字 -->
+  <div class="wrap">
+    <div class="wide" id="wide"></div>
     <div class="compact" id="compact"></div>
-    <!-- 标准：4×3 显示三段统计 + 最近三条 -->
-    <div class="standard" id="standard"></div>
   </div>
 
   <script src="../shared/countdown.js"></script>
